@@ -13,6 +13,7 @@
 import sys
 import re
 import argparse
+import bs4
 
 """
 Define the extract_names() function below and change main()
@@ -40,14 +41,48 @@ Suggested milestones for incremental development:
 
 
 def extract_names(filename):
+
     """
     Given a file name for baby.html, returns a list starting with the year string
     followed by the name-rank strings in alphabetical order.
     ['2006', 'Aaliyah 91', Aaron 57', 'Abagail 895', ' ...]
     """
     # +++your code here+++
-    return
 
+    # Open and read
+    with open( filename, 'r' ) as a:
+        read = a.read()
+
+    # set REGEX
+    re_year = re.compile( r'\<h3 align=\"center\"\>Popularity\sin\s(\d+)\<\/h3\>' )
+    re_data = re.compile( r'\<tr.*\><td>(\d+)\<\/td\>\<td\>(\w+)\<\/td\>\<td\>(\w+)\<\/td\>' )
+
+    # Search and extract
+    soup = bs4.BeautifulSoup( read, 'lxml' )
+    year = re_year.findall( str( soup.body.h3 ) )
+    data = re_data.findall( str( soup.body.table.next_sibling.next_sibling ) )
+
+    # sort and return
+    data_to_sort = []
+    for i in data:
+        data_to_sort += [ ' '.join( [ i[1], i[0] ] ), ' '.join( [ i[2], i[0] ] ) ]
+
+    data_to_sort.sort()
+
+    # filter
+    remove = []
+    for i in range( len( data_to_sort ) - 1 ):
+        if data_to_sort[ i ].split(' ')[0].lower() == data_to_sort[ i + 1 ].split(' ')[0].lower():
+            if int( data_to_sort[ i ].split(' ')[1] ) < int( data_to_sort[ i + 1 ].split(' ')[1] ):
+                remove.append( i )
+            else:
+                remove.append( i + 1 )
+
+    remove.reverse()
+    for r in remove:
+        data_to_sort.pop( r )
+
+    return year + data_to_sort
 
 def main():
     # This command-line parsing code is provided.
@@ -71,7 +106,13 @@ def main():
     # +++your code here+++
     # For each filename, get the names, then either print the text output
     # or write it to a summary file
-
+    if not create_summary:
+        for file in list( args.files ):
+            print( '\n'.join( extract_names( file ) ) )
+    else:
+        for file in list( args.files ):
+            with open( file + '.summary', 'w+' ) as f:
+                f.write( '\n'.join( extract_names( file ) ) )
 
 if __name__ == '__main__':
     main()
